@@ -7,7 +7,7 @@ import { Phys, PROP_TYPES } from './physics.js';
 import { Npcs, ACT } from './npcs.js';
 import { Director } from './director.js';
 import { Streams } from './stream.js';
-import { cleanName, cleanChat, cleanSign, pick } from './text.js';
+import { cleanName, cleanChat, cleanSign, pick, listNames } from './text.js';
 import { Terrain, VOID_DEPTH, HALF, lakeD } from '../shared/terrain.js';
 import { genTrees, genRocks } from '../shared/scatter.js';
 import { Collision, buildingWorldBoxes, plankWorldBox, resolveXZ, groundAt, insideFootprint, PLAYER_H } from '../shared/collide.js';
@@ -85,7 +85,11 @@ export class Game {
   patch(p, v) { this.world.set(p, v); }
   send(s, msg) { if (s.ws.readyState === 1) { try { s.ws.send(typeof msg === 'string' ? msg : JSON.stringify(msg)); } catch { /* closed */ } } }
   broadcast(msg) { const m = JSON.stringify(msg); for (const s of this.sessions.values()) if (s.ready) this.send(s, m); }
-  broadcastPlayers(msg) { const m = JSON.stringify(msg); for (const s of this.sessions.values()) if (s.ready && s.role === 'player') this.send(s, m); }
+  broadcastPlayers(msg) {
+    const m = JSON.stringify(msg);
+    const toViewers = msg.t === 'chron' || msg.t === 'sevent' || msg.t === 'legend' || msg.t === 'radio';
+    for (const s of this.sessions.values()) if (s.ready && (s.role === 'player' || (toViewers && s.role === 'viewer'))) this.send(s, m);
+  }
   /** Discrete effect delivered to players within `r` metres (same zone as the point). */
   emitNear(k, data, x, z, r = 150, zone = 'surface') {
     const m = JSON.stringify({ t: 'ev', k, ...data, x, z });
@@ -589,11 +593,16 @@ export class Game {
       fall: 'fell from a great height', void: 'stepped into the Null', prop: by ? `was struck by a flying object thrown by ${by.name}` : 'was struck by a flying object',
       collapse: 'was inside when the building came down', server: 'was deleted by the server',
     }[cause] || 'died';
+    const youText = {
+      blast: self ? 'blew yourself up with your own charge' : `were caught in ${by ? by.name + "'s" : 'a'} blast`,
+      fall: 'fell from a great height', void: 'stepped into the Null', prop: by ? `were struck by a flying object thrown by ${by.name}` : 'were struck by a flying object',
+      collapse: 'were inside when the building came down', server: 'were deleted by the server',
+    }[cause] || 'died';
     const e = this.chron.add({ kind: 'death', title: self ? 'OWN GOAL' : 'A PLAYER DIES', text: `${s.name} ${causeText}.${words ? ` Last words: "${words}"` : ''}`, actors: [s.name, ...(by && !self ? [by.name] : [])], pos: { x: s.x, z: s.z }, legend: self ? 30 : 10, tags: ['death', cause, ...(s.stream ? ['stream:' + s.name] : [])] });
     this.broadcastPlayers({ t: 'chron', e });
     this.addGrave({ kind: 'player', name: s.name, x: s.x, z: s.z, cause: causeText, words, by: by?.name });
     this.director.note('death', { s, cause, by, causeText, words, entry: e });
-    this.send(s, { t: 'died', cause: causeText, by: by?.name || null, words });
+    this.send(s, { t: 'died', cause: youText, by: by?.name || null, words });
     this.emitNear('died', { id: s.id }, s.x, s.z, 120, s.zone);
   }
 
@@ -788,7 +797,7 @@ export class Game {
     const residents = [...this.npcs.list.values()].filter((n) => n.homeId === b.id || n.workId === b.id).map((n) => n.def.name);
     const e = this.chron.add({
       kind: 'destroyed', title: `${b.name.toUpperCase()} DESTROYED`,
-      text: `${b.name} was brought down${by ? ` by ${by.name}` : ''}. ${residents.length ? `${residents.join(' and ')} lost ${residents.length > 1 ? 'their home' : 'their place'}.` : ''} It is not coming back.`.trim(),
+      text: `${b.name} was brought down${by ? ` by ${by.name}` : ''}. ${residents.length ? `${listNames(residents)} lost ${residents.length > 1 ? 'their homes' : 'their livelihood'}.` : ''} It is not coming back.`.trim(),
       actors: by ? [by.name] : [], pos: { x: b.x, z: b.z }, legend: 22 + value * 7, tags: ['destroyed', b.type, ...(by?.stream ? ['stream:' + by.stream.name] : [])],
     });
     this.broadcastPlayers({ t: 'chron', e });

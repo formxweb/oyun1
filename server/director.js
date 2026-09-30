@@ -120,7 +120,7 @@ export class Director {
       if (n >= m && !done.includes(m)) {
         done.push(m);
         if (m === 1) continue;
-        const e = this.g.chron.add({ kind: 'milestone', title: `${m} ${key.toUpperCase()}`, text: textFn(m), pos: at ? { x: at.x, z: at.z } : null, legend: 30 + Math.min(40, m) });
+        const e = this.g.chron.add({ kind: 'milestone', title: key === 'destroyed' ? `${m} STRUCTURES LOST` : key === 'offerings' ? `${m} OFFERINGS TO THE LAKE` : `MILESTONE: ${m} ${key.toUpperCase()}`, text: textFn(m), pos: at ? { x: at.x, z: at.z } : null, legend: 30 + Math.min(40, m) });
         this.g.broadcastPlayers({ t: 'chron', e });
       }
     }
@@ -313,6 +313,10 @@ export class Director {
   // ------------------------------------------------------------------ weather / time
   updateWeather(now, players) {
     const w = this.pub.weather, g = this.g;
+    if (w.type === 'storm' && players.length && Math.random() < 0.16) {
+      const p = pick(players), a = Math.random() * 6.28, r = 40 + Math.random() * 210;
+      g.emitNear('lightning', { bx: p.x + Math.cos(a) * r, bz: p.z + Math.sin(a) * r }, p.x, p.z, 900, p.zone);
+    }
     if (w.until && now > w.until) { w.until = 0; this.setWeather(pick(['clear', 'cloudy', 'clear', 'fog']), 0.25 + Math.random() * 0.3, 0); }
     if (now < this.st.weatherAt) return;
     this.st.weatherAt = now + (FAST ? 90000 : (5 + Math.random() * 7) * MIN * 1000);
@@ -422,8 +426,9 @@ export class Director {
             return Math.hypot(x, z) > 90 && Math.hypot(x, z) < 200 && rd.d > 12;
           }, 200);
           if (!spot) return false;
-          const where = g.district(spot.x, spot.z);
-          const e = D.announce({ kind: 'building_moves', title: 'A BUILDING MOVES', text: `${b.name} is leaving ${g.district(b.x, b.z)}. It will be at ${where} before you look away.`, at: { x: b.x, z: b.z }, lead: 7000, legend: 55, fx: 'glitch' });
+          const where = g.district(spot.x, spot.z), from = g.district(b.x, b.z);
+          const dist = Math.round(Math.hypot(spot.x - b.x, spot.z - b.z));
+          const e = D.announce({ kind: 'building_moves', title: 'A BUILDING MOVES', text: `${b.name} is leaving ${from}. In a few seconds it will stand ${dist} metres away, in ${where === from ? 'another corner of ' + where : where}.`, at: { x: b.x, z: b.z }, lead: 7000, legend: 55, fx: 'glitch' });
           D.later(7000, () => { g.moveBuildingTo(b.id, spot.x, spot.z, 14000); g.npcs.broadcastKnowledge('moved', { building: b.name }); });
           return true;
         },

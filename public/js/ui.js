@@ -174,11 +174,15 @@ export class UI {
     c.putImageData(img, 0, 0);
     this.mapBase = cv; this.terrain = terrain;
   }
-  openMap() { $('mapp').hidden = false; document.exitPointerLock?.(); this.drawMap(); }
+  openMap() { $('mapp').hidden = false; document.exitPointerLock?.(); $('mapc').onclick = () => { this.mapZoom = (this.mapZoom || 1) > 1 ? 1 : 3.2; this.drawMap(); }; this.drawMap(); }
   drawMap() {
     const cv = $('mapc'), c = cv.getContext('2d'); const S = cv.width; const k = S / 640;
     const w = this.h.world(); const me = this.h.me();
+    c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#0a0e10'; c.fillRect(0, 0, S, S);
     c.imageSmoothingEnabled = true;
+    const zoom = this.mapZoom || 1;
+    const meP = me.zone === 'under' ? [S / 2 + (me.x / UNDER.r) * (S / 2 - 10), S / 2 + (me.z / UNDER.r) * (S / 2 - 10)] : [(me.x + HALF) * k, (me.z + HALF) * k];
+    if (zoom > 1) c.setTransform(zoom, 0, 0, zoom, S / 2 - zoom * meP[0], S / 2 - zoom * meP[1]);
     if (me.zone === 'under') {
       c.fillStyle = '#04090c'; c.fillRect(0, 0, S, S); c.strokeStyle = '#20ffe0'; c.beginPath(); c.arc(S / 2, S / 2, (UNDER.r / 320) * (S / 2), 0, 7); c.stroke();
     } else this.mapBase && c.drawImage(this.mapBase, 0, 0, S, S);
@@ -199,15 +203,16 @@ export class UI {
       c.save(); c.translate(px(b.x), pz(b.z)); c.rotate(-b.yaw); const sc = under ? (S / 2 - 10) / UNDER.r : k;
       c.fillStyle = b.ruined ? 'rgba(30,20,16,.9)' : b.ancient || under ? '#3fb8ae' : '#d8613f'; c.fillRect(-T.w * sc / 2, -T.d * sc / 2, T.w * sc, T.d * sc);
       c.restore();
-      if (!b.ruined && (T.w > 8 || under)) { c.fillStyle = '#fff'; c.font = '10px sans-serif'; c.textAlign = 'center'; if (!under || b.ancient) c.fillText(b.name.replace(/KRNX.*/, 'Radio').slice(0, 18), px(b.x), pz(b.z) - (T.d * (under ? (S / 2 - 10) / UNDER.r : k)) / 2 - 3); }
+      const landmark = ['b_chapel', 'b_pier', 'b_tower', 'b_billboard', 'u_archive'].includes(b.id);
+      if (!b.ruined && (zoom > 1.6 || landmark)) { c.fillStyle = '#fff'; c.font = `${10 / zoom}px sans-serif`; c.textAlign = 'center'; c.fillText(b.name.replace(/KRNX.*/, 'Radio').slice(0, 18), px(b.x), pz(b.z) - (T.d * (under ? (S / 2 - 10) / UNDER.r : k)) / 2 - 3 / zoom); }
     }
-    for (const pl of Object.values(w.places || {})) { if (under) continue; c.fillStyle = '#ffe08a'; c.font = 'bold 11px sans-serif'; c.textAlign = 'center'; c.fillText('◆ ' + pl.name, X(pl.x), Z(pl.z) - 6); }
+    for (const pl of Object.values(w.places || {})) { if (under) continue; c.fillStyle = '#ffe08a'; c.font = `bold ${11 / zoom}px sans-serif`; c.textAlign = 'center'; c.fillText('◆ ' + pl.name, X(pl.x), Z(pl.z) - 6 / zoom); }
     for (const po of Object.values(w.portals || {})) { if (po.zone !== (under ? 'under' : 'surface')) continue; if (po.kind === 'hatch' && !po.found) continue; c.fillStyle = '#20ffe0'; c.beginPath(); c.arc(px(po.x), pz(po.z), 4, 0, 7); c.fill(); }
     // chronicle pins
     if (!under) for (const e of this.entries.slice(-60)) { if (!e.pos || e.legend < 30) continue; c.fillStyle = e.legend >= 60 ? '#ffd27a' : '#ff8a7a'; c.beginPath(); c.arc(X(e.pos.x), Z(e.pos.z), 3.5, 0, 7); c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1; c.stroke(); }
     // nearby players only (streamers stay un-sniped)
     for (const p of this.h.nearbyPlayers(70)) { if ((p.under ? 'under' : 'surface') !== me.zone) continue; c.fillStyle = '#fff'; c.beginPath(); c.arc(px(p.x), pz(p.z), 3, 0, 7); c.fill(); }
     // me
-    c.save(); c.translate(px(me.x), pz(me.z)); c.rotate(-me.yaw + Math.PI); c.fillStyle = '#7ff3e2'; c.strokeStyle = '#000'; c.beginPath(); c.moveTo(0, -8); c.lineTo(6, 7); c.lineTo(-6, 7); c.closePath(); c.fill(); c.stroke(); c.restore();
+    c.save(); c.translate(px(me.x), pz(me.z)); c.scale(1 / zoom, 1 / zoom); c.rotate(-me.yaw + Math.PI); c.fillStyle = '#7ff3e2'; c.strokeStyle = '#000'; c.beginPath(); c.moveTo(0, -8); c.lineTo(6, 7); c.lineTo(-6, 7); c.closePath(); c.fill(); c.stroke(); c.restore();
   }
 }

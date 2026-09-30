@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE LAST SERVER — Viewer Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%2305090c%27/%3E%3Cpath d=%27M8 22V10h4v8h6v4z%27 fill=%27%237ff3e2%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/viewer.css">
+</head>
+<body>
+<header><div class="brand">THE LAST SERVER <span>viewer console</span></div><div id="conn" class="pill">offline</div></header>
+<main>
+  <section id="join" class="card">
+    <h2>Join a stream</h2>
+    <p class="dim">Your streamer's viewer code is shown on their screen. Viewers can vote in polls, spend a little <b>influence</b> on limited world events, and clip moments. The effects are real: the world is shared, so <em>other</em> streamers will feel them too.</p>
+    <form id="jf"><input id="code" maxlength="8" placeholder="CODE" autocomplete="off" spellcheck="false"><input id="vname" maxlength="16" placeholder="Your name (optional)"><button class="btn">JOIN</button></form>
+    <div id="err" class="err"></div>
+    <h3>Live now</h3><div id="live" class="dim">looking…</div>
+  </section>
+
+  <section id="console" class="card" hidden>
+    <div class="row"><div><h2 id="sname">—</h2><div class="dim" id="stitle"></div></div><div class="stat"><b id="points">0</b><span>influence</span></div></div>
+    <div class="grid3"><div class="stat"><b id="where">—</b><span>location</span></div><div class="stat"><b id="hp">—</b><span>health</span></div><div class="stat"><b id="vw">—</b><span>viewers</span></div></div>
+    <div id="poll" class="poll" hidden></div>
+    <h3>Spend influence</h3>
+    <div id="fx" class="fxgrid"></div>
+    <div class="row"><input id="whisper" maxlength="50" placeholder="Radio whisper (50 chars) — used with RADIO WHISPER"><button id="clip" class="btn ghost">✂ CLIP MOMENT</button></div>
+    <div id="toast" class="toast"></div>
+  </section>
+
+  <section class="card wide">
+    <div class="row"><h2>The Chronicle</h2><div class="tabs"><button data-t="live" class="on">Live</button><button data-t="legends">Legends</button></div></div>
+    <div id="hist"></div>
+  </section>
+</main>
+<script type="module" src="/js/viewer.js"></script>
+</body>
+</html>

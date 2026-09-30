@@ -14,7 +14,7 @@ export const HILLS = [
   { x: -120, z: 150, h: 12, s: 50 },
 ];
 
-export const SPAWN = { x: 112, z: 57, yaw: Math.PI / 2 }; // arrival bus stop, looking west down Main Street
+export const SPAWN = { x: 112, z: 57, yaw: -Math.PI / 2 }; // arrival bus stop, looking west down Main Street
 export const UNDER = { y: -120, r: 104, ceiling: 34 };
 
 /** Roads: polylines of [x,z]. Main road exits the valley to the east at the barricade. */

@@ -131,7 +131,7 @@ async function buildWorld(w, quality, prog) {
   for (const p of w.players) G.entities.addPlayer(p);
   for (const n of w.npcs) { const e = G.entities.ensureNpc(n[0]); if (e) { e.g.position.set(n[1], n[2], n[3]); } }
   G.under = new Understory(G.underGroup, G.tex, w.world);
-  G.archive = new ArchiveScreen(G.buildings); G.archive.attach(); G.archive.setEntries(w.chronicle.top.concat(w.chronicle.recent.slice(-8).reverse()));
+  G.archive = new ArchiveScreen(G.buildings); G.archive.attach(); G.archive.setEntries(archiveList(w.chronicle.top, w.chronicle.recent));
   prog(0.9, 'finding you a place to stand…'); await nextFrame();
 
   G.post = new Post(renderer, scene, camera, quality);
@@ -168,6 +168,12 @@ async function buildWorld(w, quality, prog) {
   addEventListener('resize', onResize);
   // let the shaders compile before the first visible frame
   renderer.compile(scene, camera);
+}
+
+function archiveList(top = G.ui.top, recent = G.ui.entries) {
+  const seen = new Set(), out = [];
+  for (const e of top.slice(0, 4).concat(recent.slice(-10).reverse())) if (!seen.has(e.id)) { seen.add(e.id); out.push(e); }
+  return out;
 }
 
 function onResize() {
@@ -228,7 +234,7 @@ function bindNet() {
   net.on('pleave', (m) => { const e = G.entities.players.get(m.id); if (e) ui.chatLine('', `${e.info.name} left`, true); G.entities.removePlayer(m.id); });
   net.on('plive', (m) => G.entities.setLive(m.id, m.live));
   net.on('chat', (m) => { if (m.id === G.myId) { ui.chatLine(m.name, m.text); return; } G.entities.chat(m.id, m.text); ui.chatLine(m.name + (m.live ? ' ●' : ''), m.text); });
-  net.on('chron', (m) => { ui.addEntry(m.e); const cls = m.e.legend >= 60 ? 'legend' : m.e.kind === 'death' ? 'death' : ''; ui.feed(m.e, cls); G.archive.setEntries(ui.top.slice(0, 5).concat(ui.entries.slice(-8).reverse())); });
+  net.on('chron', (m) => { ui.addEntry(m.e); const cls = m.e.legend >= 60 ? 'legend' : m.e.kind === 'death' ? 'death' : ''; ui.feed(m.e, cls); G.archive.setEntries(archiveList()); });
   net.on('legend', (m) => { ui.legend(m.title, m.text); G.audio.legend(); });
   net.on('era', (m) => { ui.toast(`A NEW AGE: ${m.era.name}`, 'good'); });
   net.on('toast', (m) => ui.toast(m.text, m.kind));
