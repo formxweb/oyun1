@@ -12,7 +12,7 @@ export class Understory {
     const R = UNDER.r;
     // ---- floor
     const ft = tex.rock.clone(); ft.repeat.set(24, 24); ft.needsUpdate = true;
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(R + 8, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: ft, color: 0x8a8f90, roughness: 0.92 }));
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(R + 8, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: ft, color: 0xc0c8c8, roughness: 0.92 }));
     floor.position.y = Y; floor.receiveShadow = true; group.add(floor);
     // paved radial streets + plaza ring
     const paveT = tex.stone.clone(); paveT.repeat.set(3, 20); paveT.needsUpdate = true;
@@ -56,7 +56,8 @@ export class Understory {
     }
     const pts = []; for (let i = 0; i < 900; i++) { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * (R + 8); pts.push(Math.cos(a) * r, Y + UNDER.ceiling + 10 - (r / (R + 10)) ** 2 * 12 - rnd() * 3, Math.sin(a) * r); }
     const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    this.motes = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x9ffff0, size: 1.4, sizeAttenuation: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    const mc = document.createElement('canvas'); mc.width = mc.height = 32; const mx = mc.getContext('2d'); const mg = mx.createRadialGradient(16, 16, 0, 16, 16, 16); mg.addColorStop(0, 'rgba(255,255,255,1)'); mg.addColorStop(0.4, 'rgba(255,255,255,0.4)'); mg.addColorStop(1, 'rgba(255,255,255,0)'); mx.fillStyle = mg; mx.fillRect(0, 0, 32, 32);
+    this.motes = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x9ffff0, size: 1.6, map: new THREE.CanvasTexture(mc), sizeAttenuation: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
     group.add(this.motes);
     // ---- plaza fountain (dry), lamps around it
     const stone = new THREE.MeshStandardMaterial({ map: tex.stone, roughness: 0.9 });

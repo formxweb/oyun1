@@ -149,6 +149,7 @@ export class FX {
     this.scale.value = (window.innerHeight * (window.devicePixelRatio || 1)) / (2 * Math.tan((cam.fov * Math.PI / 180) / 2));
     // ongoing sources (damaged buildings, ruins, beacons)
     for (const s of this.sourceList || []) {
+      if (s.kind === 'chimney') { if (s.active && Math.hypot(s.world.x - cam.position.x, s.world.z - cam.position.z) < 110 && Math.random() < 2.2 * dt) this.smoke.emit(s.world.x, s.world.y, s.world.z, 0.35 + (this.windX || 0.3), 0.9 + Math.random() * 0.5, 0.15, 5 + Math.random() * 3, 0.35, 2.6, [0.75, 0.75, 0.78, 0.32], [0.7, 0.7, 0.72, 0], -0.05, 0.25); continue; }
       const burnRuin = s.kind === 'ruin' && Date.now() - s.ruinedAt < 12 * 60000;
       const dmg = s.kind === 'dmg';
       if (Math.hypot(s.world.x - cam.position.x, s.world.z - cam.position.z) > 130) continue;

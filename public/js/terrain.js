@@ -5,6 +5,7 @@ import { N, VERTS, CELL, HALF } from '/shared/terrain.js';
 import { ROADS, BTYPES } from '/shared/layout.js';
 import { roadDist } from '/shared/scatter.js';
 import { smoothstep, mulberry32 } from '/shared/util.js';
+import { textTexture } from './tex.js';
 
 const WEAR_N = 160;
 
@@ -182,6 +183,7 @@ diffuseColor.rgb = col;`)
       pts.push(r.pts[r.pts.length - 1]);
       const clipped = pts.filter((p) => Math.hypot(p[0], p[1]) < 238);
       if (clipped.length < 2) continue;
+      if (r.id === 'main') { const a = clipped[clipped.length - 2], b = clipped[clipped.length - 1]; this.buildBarricade(b[0], b[1], b[0] - a[0], b[1] - a[1]); }
       const pos = [], uv = [], idx = [];
       let dist = 0;
       const hw = r.width / 2;
@@ -207,6 +209,25 @@ diffuseColor.rgb = col;`)
       const m = new THREE.Mesh(g, id === 'main' ? asphalt : dirt);
       m.receiveShadow = true; this.group.add(m);
     }
+  }
+
+  buildBarricade(x, z, dx, dz) {
+    const T = this.terrain, g = new THREE.Group();
+    const y = T.height(x, z);
+    g.position.set(x, y, z); g.rotation.y = Math.atan2(dx, dz);
+    const conc = new THREE.MeshStandardMaterial({ map: this.tex.concrete, roughness: 1 });
+    const stripe = document.createElement('canvas'); stripe.width = 128; stripe.height = 32; const c = stripe.getContext('2d');
+    for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#f2f2ee' : '#e8621c'; c.beginPath(); c.moveTo(i * 16, 32); c.lineTo(i * 16 + 16, 0); c.lineTo(i * 16 + 32, 0); c.lineTo(i * 16 + 16, 32); c.fill(); }
+    const st = new THREE.CanvasTexture(stripe); st.colorSpace = THREE.SRGBColorSpace; st.wrapS = THREE.RepeatWrapping;
+    const board = new THREE.MeshStandardMaterial({ map: st, roughness: 0.6 });
+    for (let i = -2; i <= 2; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.85, 0.7), conc); b.position.set(i * 2.6, 0.42, 0); b.rotation.y = (i % 2) * 0.05; b.castShadow = true; b.receiveShadow = true; g.add(b); }
+    for (const sx of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.6, 0.14), conc); p.position.set(sx * 5.4, 0.8, -0.2); g.add(p); }
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(10.8, 0.3, 0.06), board); rail.position.set(0, 1.35, -0.2); g.add(rail);
+    const signTex = textTexture('', { w: 512, h: 256, lines: ['ROAD CLOSED', 'THE SERVER', 'ENDS HERE'], font: 'bold 76px "Arial Black", Arial', color: '#111', bg: '#f0c020', pad: 14 });
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.3, 0.08), [conc, conc, conc, conc, new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.5 }), conc]); sign.position.set(0, 2.6, -0.2); sign.castShadow = true; g.add(sign);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), conc); post.position.set(0, 1.4, -0.25); g.add(post);
+    this.barLamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffa000, emissive: 0xff8a00, emissiveIntensity: 2 })); this.barLamp.position.set(0, 3.5, -0.2); g.add(this.barLamp);
+    this.group.add(g);
   }
 
   // -------------------------------------------------------------- trees
@@ -403,6 +424,7 @@ void main(){
     gu.uAmb.value.copy(env.hemi.color).multiplyScalar(env.hemi.intensity * 0.55).add(new THREE.Color(0.02, 0.03, 0.05));
     gu.uWaterLvl.value = this.world.lake?.level ?? 0;
     this.group.visible = !inUnder;
+    if (this.barLamp) this.barLamp.material.emissiveIntensity = Math.sin(time * 5) > 0 ? 3.2 : 0.15;
     // shadow-cast only nearby tree chunks
     this._st = (this._st || 0) - dt;
     if (this._st <= 0) {

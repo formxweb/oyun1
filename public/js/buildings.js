@@ -236,6 +236,7 @@ export class BuildingsView {
     v.parts.walls = P.build(root); v.parts.roof = R.build(root); v.parts.inner = F.build(root, { cast: false });
     v.parts.trim = E.build(root); v.parts.glass = G.build(root, { cast: false });
     v.glassMeshes = v.parts.glass;
+    if (b.relocated) this.addPlaque(v);
     // name sign
     if (!['house', 'cottage', 'chapel', 'boathouse', 'hall'].includes(b.type) || b.type === 'chapel') this.addNameSign(v);
   }
@@ -301,6 +302,16 @@ export class BuildingsView {
     }
   }
 
+  /** Buildings reborn in the Understory carry a plaque about how they fell. */
+  addPlaque(v) {
+    const { b, T, root } = v;
+    const when = b.relocated.at ? new Date(b.relocated.at).toISOString().slice(11, 19) + ' UTC' : '';
+    const tex = textTexture('', { w: 512, h: 220, lines: ['FORMERLY', b.name.toUpperCase().slice(0, 24), b.relocated.by ? `brought down by ${b.relocated.by}`.slice(0, 32) : 'it fell', when], font: 'bold 44px Georgia, serif', color: '#a8fff2', bg: '#071618', pad: 10 });
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.5, 0.16), this.M.stone); post.position.set(T.w / 2 - 0.6, 0.25, T.d / 2 + 2.4); root.add(post);
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.66, 0.07), [this.M.stone, this.M.stone, this.M.stone, this.M.stone, new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.7, roughness: 0.6 }), this.M.stone]);
+    plate.position.set(T.w / 2 - 0.6, 0.72, T.d / 2 + 2.4); plate.rotation.x = -0.25; root.add(plate);
+  }
+
   addNameSign(v) {
     const { b, T } = v;
     const tex = textTexture(shortName(b.name), { w: 512, h: 100, font: 'bold 60px "Trebuchet MS", Arial', color: '#f6ecd0', bg: '#2b2a28', stroke: null });
@@ -318,7 +329,7 @@ export class BuildingsView {
   decorate(v, P, E, R, rnd) {
     const { b, T } = v, M = this.M;
     const hw = T.w / 2, hd = T.d / 2, h = T.h;
-    const chimney = (x, z) => { P.box(M.brick, x, h + 1.4, z, 0.9, 3.2, 0.9, 0.5); P.box(M.concrete, x, h + 3.05, z, 1.1, 0.18, 1.1, 0.5); v.chimney = new THREE.Vector3(x, h + 3.2, z); };
+    const chimney = (x, z) => { P.box(M.brick, x, h + 1.4, z, 0.9, 3.2, 0.9, 0.5); P.box(M.concrete, x, h + 3.05, z, 1.1, 0.18, 1.1, 0.5); v.chimney = new THREE.Vector3(x, h + 3.2, z); this.smokers.push({ bid: b.id, kind: 'chimney', world: new THREE.Vector3(), active: false }); };
     if (b.type === 'house' || b.type === 'cottage' || b.type === 'inn') {
       chimney(hw * 0.55, -hd * 0.25);
       // porch
@@ -652,6 +663,7 @@ export class BuildingsView {
       if (v.bell && v.bellSwing) { v.bellSwing *= 0.985; v.bell.rotation.z = Math.sin(time * 6) * v.bellSwing; }
       if (v.parts.roof) for (const m of v.parts.roof) m.visible = true;
       v.lit = blackout ? 0 : 1;
+      if (v.chimney) { for (const sm of this.smokers) if (sm.bid === b.id && sm.kind === 'chimney') { sm.world.copy(v.chimney).applyMatrix4(v.root.matrixWorld); sm.active = !blackout && !b.ruined && (night > 0.35 || env.rainI > 0.3); } }
     }
     for (const l of this.lamps) {
       const v = this.views.get(l.bid);

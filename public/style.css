@@ -24,15 +24,15 @@ body.cine #letterbox i { height:9vh; }
 @keyframes gl { 0%{opacity:.9;transform:translateX(0)} 25%{opacity:.2;transform:translateX(-8px)} 50%{opacity:.8;transform:translateX(6px)} 75%{opacity:.1} 100%{opacity:0} }
 
 /* ---------- title ---------- */
-#title { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; overflow:auto; background: radial-gradient(1200px 700px at 70% 30%, #1d3a3f 0%, #0b1418 45%, #05070a 100%); }
+#title { position:fixed; inset:0; z-index:50; display:flex; overflow:auto; background: radial-gradient(1200px 700px at 70% 30%, #1d3a3f 0%, #0b1418 45%, #05070a 100%); }
 .title-bg { position:absolute; inset:0; background:
   linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.65) 100%),
   radial-gradient(500px 220px at 50% 108%, rgba(255,150,80,.35), transparent 70%),
   repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 90px); animation: drift 30s linear infinite; }
 @keyframes drift { to { background-position: 0 0, 0 0, 900px 0; } }
-.title-inner { position:relative; width:min(560px, 92vw); padding:32px 8px; }
+.title-inner { position:relative; width:min(560px, 92vw); padding:32px 8px; margin:auto; }
 .eyebrow { font-family:var(--mono); font-size:12px; letter-spacing:.24em; text-transform:uppercase; color:var(--acc); opacity:.85; }
-.logo { margin:.25em 0 .15em; font-size:clamp(54px, 10vw, 96px); line-height:.9; font-weight:900; letter-spacing:.04em; text-shadow: 0 0 40px rgba(127,243,226,.25), 3px 0 0 rgba(255,60,80,.5), -3px 0 0 rgba(60,200,255,.5); animation: flick 7s infinite; }
+.logo { margin:.25em 0 .15em; font-size:clamp(46px, 8vw, 80px); line-height:.92; font-weight:900; letter-spacing:.04em; text-shadow: 0 0 40px rgba(127,243,226,.25), 3px 0 0 rgba(255,60,80,.5), -3px 0 0 rgba(60,200,255,.5); animation: flick 7s infinite; }
 @keyframes flick { 0%,92%,100%{ text-shadow: 0 0 40px rgba(127,243,226,.25), 3px 0 0 rgba(255,60,80,.5), -3px 0 0 rgba(60,200,255,.5); transform:none } 93%{ transform:translateX(-6px) skewX(-6deg); text-shadow: 12px 0 0 rgba(255,60,80,.7), -12px 0 0 rgba(60,200,255,.7) } 95%{ transform:translateX(5px) } 97%{ transform:none } }
 .tagline { font-size:17px; color:#cfc9b8; margin:0 0 14px; line-height:1.5; }
 .status-line { font-family:var(--mono); font-size:12px; color:var(--gold); min-height:34px; margin-bottom:10px; letter-spacing:.04em; }

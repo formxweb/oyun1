@@ -267,7 +267,14 @@ function bindNet() {
   net.on('sevent', (m) => onServerEvent(m));
   net.on('radio', (m) => onRadio(m));
   net.on('ev', (m) => onEvent(m));
-  net.on('close', () => { if (G.ready) { ui.toast('Connection lost. Reload to rejoin — the world will still be here.', 'warn'); G.ready = false; document.exitPointerLock?.(); $('title').hidden = false; $('title').style.opacity = 0.96; $('terr').textContent = 'Connection lost. Reload to rejoin.'; $('enter').disabled = true; } });
+  net.on('close', (e) => {
+    if (!G.ready) return;
+    G.ready = false; document.exitPointerLock?.();
+    const replaced = e && e.code === 4000;
+    $('title').hidden = false; $('enter').disabled = true;
+    $('terr').textContent = replaced ? 'You joined from another tab. This session was closed.' : 'Connection lost — rejoining in a moment. The world is still here.';
+    if (!replaced) setTimeout(() => location.reload(), 3500);
+  });
   setInterval(() => net.ping(), 4000);
 }
 
@@ -472,8 +479,8 @@ function frame(now) {
   promptT -= dt; if (promptT <= 0) {
     promptT = 0.12;
     const it = L.dead || !L.locked ? null : findInteract();
-    G.ui.prompt(it ? `<b>E</b> ${it.label}` : null);
-    const canGrab = L.tool === 0 && !L.heldId && L.locked && (G.crossProp = pickAimProp());
+    const canGrab = L.tool === 0 && !L.heldId && L.locked && !it && (G.crossProp = pickAimProp());
+    G.ui.prompt(it ? `<b>E</b> ${it.label}` : canGrab ? `<b>LMB</b> Pick up ${esc(G.crossProp.meta?.name || G.crossProp.type)}` : L.heldId && L.locked && L.tool === 0 ? '<b>LMB</b> throw (hold to wind up) · <b>RMB</b> drop' : null);
     G.ui.crosshairHot(!!it || !!canGrab);
   }
   // HUD
@@ -527,7 +534,7 @@ function assignLamps() {
   cands.sort((a, b) => a[0] - b[0]);
   for (let i = 0; i < G.lampPool.length; i++) {
     const L = G.lampPool[i], c = cands[i];
-    if (c) { L.position.copy(c[1].world); L.color.set(c[1].color); L.intensity = c[1].intensity * 5; L.distance = c[1].dist + 4; }
+    if (c) { L.position.copy(c[1].world); L.color.set(c[1].color); L.intensity = c[1].intensity * (zone === 'under' ? 9 : 5); L.distance = c[1].dist + 4; }
     else L.intensity = 0;
   }
 }

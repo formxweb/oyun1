@@ -376,11 +376,11 @@ export class Env {
     this.sun.target.position.set(tx, cam.position.y - 2, tz);
     this.sun.position.set(tx + ldir.x * 200, cam.position.y - 2 + ldir.y * 200, tz + ldir.z * 200);
     this.sun.target.updateMatrixWorld();
-    const hemiInt = under ? 0.35 : (0.42 + 0.85 * this.dayAmt + 0.95 * tw) * (1 - this.dim * 0.55) + this.flash * 1.2 + this.nightAmt * 0.2;
+    const hemiInt = under ? 0.85 : (0.42 + 0.85 * this.dayAmt + 0.95 * tw) * (1 - this.dim * 0.55) + this.flash * 1.2 + this.nightAmt * 0.2;
     this.hemi.intensity = hemiInt;
-    this.hemi.color.copy(hemiS).multiplyScalar(under ? 0.5 : 1).lerp(new THREE.Color(0.6, 0.15, 0.12), this.red * 0.5);
+    this.hemi.color.copy(under ? new THREE.Color(0x4a8a90) : hemiS).lerp(new THREE.Color(0.6, 0.15, 0.12), this.red * 0.5);
     this.hemi.groundColor.copy(hemiG);
-    this.fill.intensity = under ? 0.5 : 0.16 + this.nightAmt * 0.3;
+    this.fill.intensity = under ? 0.9 : 0.16 + this.nightAmt * 0.3;
     this.fill.color.set(under ? 0x5a4a7a : 0x2a3c6a);
 
     // ---- fog

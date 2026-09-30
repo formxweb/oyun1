@@ -170,7 +170,7 @@ export class Game {
     const token = typeof m.token === 'string' && m.token.length >= 16 && m.token.length <= 80 ? m.token : crypto.randomUUID() + crypto.randomUUID();
     const pid = crypto.createHash('sha256').update(token).digest('hex').slice(0, 16);
     // one connection per identity: a re-join replaces the old ghost session
-    for (const o of this.players()) if (o.pid === pid) { this.dropSession(o, 'replaced'); try { o.ws.close(); } catch { /* */ } }
+    for (const o of this.players()) if (o.pid === pid) { this.dropSession(o, 'replaced'); try { o.ws.close(4000, 'replaced'); } catch { /* */ } }
     const now = Date.now();
     const rec = this.world.priv.players[pid] || (this.world.priv.players[pid] = { name, first: now, last: now, visits: 0, playtime: 0, notoriety: 0, title: null, stats: { throws: 0, offerings: 0, kills: 0, deaths: 0, destroyed: 0, planks: 0, signs: 0, discoveries: 0, gifts: 0, clips: 0, steps: 0 }, lastWords: null });
     const since = rec.last || now;
@@ -234,7 +234,7 @@ export class Game {
     const now = Date.now();
     s.tokens = Math.min(90, s.tokens + ((now - s.lastTok) / 1000) * 60); s.lastTok = now;
     if (m.t !== 'st') { if (s.tokens < 1) return; s.tokens -= 1; }
-    if (m.t === 'hello') return this.hello(s, m);
+    if (m.t === 'hello') return s.ready || s.helloed ? undefined : ((s.helloed = true), this.hello(s, m));
     if (s.role === 'viewer') return this.streams.viewerMsg(s, m);
     if (!s.ready) return;
     switch (m.t) {
@@ -393,7 +393,7 @@ export class Game {
     let hit = this.phys.rayStatic(a.o, a.d, 9);
     const at = hit || { x: a.o.x + a.d.x * 3, y: Math.max(a.o.y + a.d.y * 3, this.terrain.height(a.o.x + a.d.x * 3, a.o.z + a.d.z * 3)), z: a.o.z + a.d.z * 3 };
     if (Math.hypot(at.x - s.x, at.z - s.z) > 12) return;
-    s.inv.charges--;
+    s.inv.charges--; this.send(s, { t: 'you', ...this.meMsg(s) });
     const id = 'c' + (this.nextCh = (this.nextCh || 0) + 1);
     const ch = { id, x: at.x, y: at.y + 0.08, z: at.z, by: { pid: s.pid, name: s.name, sid: s.id, stream: this.streamOf(s) }, fuseAt: Date.now() + CFG.fuseMs, zone: s.zone };
     this.charges.set(id, ch);
@@ -435,7 +435,7 @@ export class Game {
     const mine = list.filter((p) => p.pid === s.pid).sort((a2, b2) => a2.at - b2.at);
     if (mine.length >= 24) this.removePlank(mine[0].id);
     if (list.length >= 160) this.removePlank(list.sort((a2, b2) => a2.at - b2.at)[0].id);
-    s.inv.planks--;
+    s.inv.planks--; this.send(s, { t: 'you', ...this.meMsg(s) });
     const id = 'pl' + (this.world.priv.nextPlank = (this.world.priv.nextPlank || 0) + 1);
     const plank = { id, x: round(x), y: round(y), z: round(z), yaw: round(yaw), by: s.name, pid: s.pid, at: Date.now() };
     this.patch(`planks.${id}`, plank);
@@ -458,7 +458,7 @@ export class Game {
     const mine = list.filter((p) => p.pid === s.pid).sort((a2, b2) => a2.at - b2.at);
     if (mine.length >= 4) this.patch(`signs.${mine[0].id}`, null);
     if (list.length >= 90) this.patch(`signs.${list.sort((a2, b2) => a2.at - b2.at)[0].id}`, null);
-    s.inv.signs--;
+    s.inv.signs--; this.send(s, { t: 'you', ...this.meMsg(s) });
     const id = 'sg' + (this.world.priv.nextSign = (this.world.priv.nextSign || 0) + 1);
     const sign = { id, x: round(hit.x), y: round(hit.y), z: round(hit.z), yaw: round(s.yaw + Math.PI), text, by: s.name, pid: s.pid, at: Date.now(), zone: s.zone };
     this.patch(`signs.${id}`, sign);
@@ -506,7 +506,7 @@ export class Game {
   }
 
   discoverHatch(s, po) {
-    po.found = true; po.by = s.name; po.at = Date.now();
+    po.found = true; po.by = s.name; po.pid = s.pid; po.at = Date.now();
     this.patch(`portals.${po.id}`, { ...po });
     s.rec.stats.discoveries++;
     this.send(s, { t: 'nameprompt', portal: po.id, hint: 'You found a way down. Name this place — the world will remember what you call it.' });
@@ -530,7 +530,7 @@ export class Game {
 
   actName(s, m) {
     const po = this.pub.portals[m.portal];
-    if (!po || po.by !== s.name || po.name) return;
+    if (!po || po.pid !== s.pid || po.name) return;
     const name = cleanSign(m.name).slice(0, 28);
     if (!name || name.length < 3) return;
     this.patch(`portals.${po.id}.name`, name);
