@@ -25,8 +25,9 @@ export function heightNoPads(x, z) {
     const d2 = ((x - H.x) ** 2 + (z - H.z) ** 2) / (2 * H.s * H.s);
     h += H.h * Math.exp(-d2);
   }
-  const w = smoothstep(170, 300, r);
-  h += w * w * 85 + w * 18 + fbm(x * 0.012 + 40, z * 0.012, 4, SEED + 3) * w * 40;
+  const w = smoothstep(150, 320, r);
+  const ridge = 1 - Math.abs(fbm(x * 0.011 + 90, z * 0.011 + 30, 4, SEED + 11) * 2 - 1);
+  h += w * w * 62 + w * 16 + (fbm(x * 0.017 + 40, z * 0.017, 4, SEED + 3) - 0.35) * w * 80 + ridge * ridge * w * 42;
   const td = Math.hypot((x - TOWN.x) / 1.9, z - TOWN.z);
   h = lerp(h, TOWN.y, 1 - smoothstep(40, 84, td));
   const d = lakeD(x, z);

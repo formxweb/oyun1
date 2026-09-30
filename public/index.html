@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE LAST SERVER</title>
+<meta name="description" content="One persistent world. Every player edits the same history. Nobody knows who runs the server.">
+<link rel="stylesheet" href="/style.css">
+<script type="importmap">
+{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="letterbox"><i></i><i></i></div>
+<div id="glitchflash"></div>
+
+<!-- ============ TITLE ============ -->
+<section id="title">
+  <div class="title-bg"></div>
+  <div class="title-inner">
+    <div class="eyebrow" id="tsub">a single world · shared by everyone · remembered forever</div>
+    <h1 class="logo">THE LAST<br>SERVER</h1>
+    <p class="tagline">Nobody knows who is running it.<br>Everything you do stays.</p>
+    <div class="status-line" id="tstatus">Contacting the server…</div>
+    <form id="joinform" autocomplete="off">
+      <label>Your name<input id="pname" maxlength="16" placeholder="Choose a name" spellcheck="false"></label>
+      <label class="check"><input type="checkbox" id="pstream"> I am streaming — give my viewers a code</label>
+      <label id="streamtitlewrap" hidden>Stream title<input id="pstreamtitle" maxlength="40" placeholder="e.g. Blowing up the diner (again)"></label>
+      <label>Graphics
+        <select id="pquality"><option value="high">High — MSAA, bloom, dense grass</option><option value="medium">Medium</option><option value="low">Low — for laptops</option></select>
+      </label>
+      <button id="enter" type="submit" disabled>ENTER HOLLOWMERE</button>
+      <div class="err" id="terr"></div>
+    </form>
+    <div class="controls">
+      <b>WASD</b> move · <b>Shift</b> run · <b>Space</b> jump · <b>Mouse</b> look · <b>E</b> interact · <b>G</b> give held item<br>
+      <b>1–4 / wheel</b> tools (hands · charge · plank · sign) · <b>LMB</b> use · <b>hold LMB</b> to wind up a throw · <b>RMB</b> drop<br>
+      <b>Tab</b> the Chronicle · <b>M</b> map · <b>T</b> chat · <b>F</b> clip this moment · <b>V</b> camera · <b>H</b> hide HUD · <b>Z X C B N</b> emotes
+    </div>
+    <div class="fine">A prototype of a persistent world. The Director is watching what you do.</div>
+  </div>
+</section>
+
+<section id="loading" hidden>
+  <div class="load-inner"><div class="load-title" id="loadtitle">ASSEMBLING HOLLOWMERE</div><div class="bar"><i id="loadbar"></i></div><div class="load-sub" id="loadsub"></div></div>
+</section>
+
+<!-- ============ HUD ============ -->
+<div id="hud" hidden>
+  <div id="topleft">
+    <div class="clock" id="clock">00:00:00 UTC</div>
+    <div class="small" id="worldtime">—</div>
+    <div class="era" id="era"></div>
+    <div class="small dim" id="online"></div>
+  </div>
+  <div id="banner"><div class="b-head" id="b-head"></div><div class="b-title" id="b-title"></div><div class="b-text" id="b-text"></div></div>
+  <div id="legendtoast"><span class="tag">LEGEND</span><b id="lg-title"></b><span id="lg-text"></span></div>
+  <div id="stream" hidden>
+    <div class="live"><span class="dot"></span> LIVE</div>
+    <div class="code">CODE <b id="st-code"></b></div>
+    <div class="small">Viewers: <b id="st-viewers">0</b> — <a href="/viewer" target="_blank">viewer page</a></div>
+    <div id="st-poll" hidden></div>
+    <div id="st-log" class="small dim"></div>
+  </div>
+  <div id="feed"></div>
+  <div id="cross"><i></i></div>
+  <div id="prompt" hidden></div>
+  <div id="dialog" hidden><div class="d-name" id="d-name"></div><div class="d-text" id="d-text"></div></div>
+  <div id="radio" hidden><span class="r-from" id="r-from"></span><span id="r-text"></span></div>
+  <div id="whisper" hidden></div>
+  <div id="chatlog"></div>
+  <input id="chatin" maxlength="140" placeholder="say something…" hidden>
+  <div id="toasts"></div>
+  <div id="bottom">
+    <div id="vitals"><div class="hp"><i id="hpbar"></i></div><div class="small" id="hptxt">100</div></div>
+    <div id="tools"></div>
+    <div id="hold" class="small dim"></div>
+  </div>
+  <div id="clipmark" hidden></div>
+  <div id="ping" class="small dim"></div>
+</div>
+
+<!-- ============ PANELS ============ -->
+<section id="chronicle" class="panel" hidden>
+  <header><h2>THE CHRONICLE</h2><nav id="chtabs"><button data-t="recent" class="on">Recent</button><button data-t="legends">Legends</button><button data-t="places">Places &amp; Firsts</button></nav><button class="x" data-close>✕</button></header>
+  <div id="chbody"></div>
+  <footer class="small dim">Every entry is stamped in UTC. Streamers and viewers can point at the same second of the same world.</footer>
+</section>
+<section id="mapp" class="panel" hidden>
+  <header><h2>HOLLOWMERE</h2><span class="small dim" id="maplegend">you ▲ · buildings ▮ · pins = history</span><button class="x" data-close>✕</button></header>
+  <canvas id="mapc" width="640" height="640"></canvas>
+</section>
+<section id="pause" class="panel" hidden>
+  <header><h2>PAUSED</h2></header>
+  <div class="pause-grid">
+    <div><h3>Audio</h3>
+      <label>Master <input type="range" id="vol" min="0" max="100" value="80"></label>
+      <label class="check"><input type="checkbox" id="voiceon" checked> Radio voices (speech synthesis)</label>
+      <h3>Controls</h3>
+      <label>Mouse sensitivity <input type="range" id="sens" min="20" max="250" value="100"></label>
+      <label class="check"><input type="checkbox" id="showlive" checked> Show my LIVE badge to others</label>
+    </div>
+    <div><h3>Streaming</h3>
+      <div id="pause-stream" class="small"></div>
+      <button id="togglestream" class="btn">Go live</button>
+      <h3>Session</h3><div class="small dim" id="pause-info"></div>
+    </div>
+  </div>
+  <div class="center"><button id="resume" class="btn big">RESUME</button></div>
+</section>
+<section id="death" hidden><div class="death-inner"><div class="d-h">YOU DIED</div><div id="death-cause"></div><div id="death-words" class="small dim"></div><div class="small dim">The server remembers.</div><button id="respawn" class="btn big">RETURN TO THE BUS STOP</button></div></section>
+<section id="digest" class="panel small-panel" hidden></section>
+<div id="modal" hidden><div class="modal-box"><div id="modal-title"></div><input id="modal-in" maxlength="60" autocomplete="off"><div class="row"><button id="modal-ok" class="btn">OK</button><button id="modal-cancel" class="btn ghost">Cancel</button></div></div></div>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

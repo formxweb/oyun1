@@ -250,7 +250,7 @@ export class Game {
     if (!Number.isFinite(x + y + z)) return;
     const dh = Math.hypot(x - s.x, z - s.z);
     const maxH = 12.5 * dt + 2.5;
-    if (dh > maxH || Math.abs(y - s.y) > 30 * dt + 4) {
+    if (!CFG.dev && (dh > maxH || Math.abs(y - s.y) > 30 * dt + 4)) {
       s.violations = (s.violations || 0) + 1;
       this.send(s, { t: 'tp', x: s.x, y: s.y, z: s.z, zone: s.zone, yaw: s.yaw });
       return;
@@ -682,7 +682,7 @@ export class Game {
   explode({ x, y, z, radius = 16, power = 1, by = null, kind = 'charge', zone = 'surface', silent = false }) {
     const pub = this.pub;
     pub.stats.explosions++;
-    this.emitNear('boom', { y, r: radius, p: power, k: kind }, x, z, 380, zone);
+    this.emitNear('boom', { y, r: radius, p: power, kd: kind }, x, z, 380, zone);
     // buildings
     if (zone === 'surface') {
       for (const id in pub.buildings) {

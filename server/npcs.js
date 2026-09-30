@@ -277,9 +277,8 @@ export class Npcs {
 
   passable(n, x, z) {
     const t = this.game.terrain;
-    const h = t.height(x, z);
-    if (h < WATER_LEVEL - 0.55 || h < VOID_DEPTH * 0.4) return false;
     const gy = groundAt(this.game.col, t, x, z, n.y, 'surface');
+    if (gy < WATER_LEVEL - 0.55 || gy < VOID_DEPTH * 0.4) return false;
     if (gy - n.y > 0.55) return false;
     const p = { x, z };
     const moved = resolveXZ(this.game.col, p, 0.36, n.y, n.y + PLAYER_H, 'surface');

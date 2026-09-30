@@ -65,7 +65,7 @@ export function genRocks(terrain) {
     const x = (rnd() - 0.5) * 560, z = (rnd() - 0.5) * 560;
     const y = terrain.height(x, z);
     const shore = Math.abs(lakeD(x, z) - 1.08) < 0.14;
-    const steep = terrain.slope(x, z) > 0.55;
+    const steep = terrain.slope(x, z) > 0.42 && Math.hypot(x, z) < 210;
     if (!(shore || steep || rnd() < 0.05)) continue;
     if (y < -0.3) continue;
     const rd = roadDist(x, z);
