@@ -1,0 +1,19 @@
+{
+  "name": "the-last-server",
+  "version": "0.1.0",
+  "description": "THE LAST SERVER — one persistent 3D world where the players write the history.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "bots": "node tools/bots.js",
+    "test": "node tools/selftest.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.21.0",
+    "three": "^0.186.1",
+    "ws": "^8.18.0"
+  }
+}
