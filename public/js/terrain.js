@@ -49,18 +49,19 @@ export class TerrainView {
 
   refreshMask() {
     const w = this.world, d = this.maskData;
-    d.fill(0);
+    // roads never change: compute their "no grass" layer once and copy it on every refresh
+    if (!this.baseMask) {
+      const base = new Uint8Array(320 * 320 * 4);
+      for (let j = 0; j < 320; j++) for (let i = 0; i < 320; i++) {
+        const x = i * 2 - HALF + 1, z = j * 2 - HALF + 1;
+        const rd = roadDist(x, z);
+        if (rd.d < rd.hw + 2.6) base[(j * 320 + i) * 4] = (1 - smoothstep(rd.hw, rd.hw + 2.6, rd.d)) * 255;
+      }
+      this.baseMask = base;
+    }
+    d.set(this.baseMask);
     const crat = Object.values(w.craters || {}), erased = Object.values(w.erased || {});
     const blds = Object.values(w.buildings || {}).filter((b) => b.zone === 'surface');
-    for (let j = 0; j < 320; j++) for (let i = 0; i < 320; i++) {
-      const x = i * 2 - HALF + 1, z = j * 2 - HALF + 1;
-      let ng = 0, sc = 0, vd = 0;
-      const rd = roadDist(x, z);
-      if (rd.d < rd.hw + 2.6) ng = Math.max(ng, 1 - smoothstep(rd.hw, rd.hw + 2.6, rd.d));
-      const o = (j * 320 + i) * 4;
-      d[o] = ng * 255;
-      d[o + 1] = sc; d[o + 2] = vd;
-    }
     const put = (cx, cz, rad, ch, val) => {
       const i0 = Math.max(0, Math.floor((cx - rad + HALF) / 2)), i1 = Math.min(319, Math.ceil((cx + rad + HALF) / 2));
       const j0 = Math.max(0, Math.floor((cz - rad + HALF) / 2)), j1 = Math.min(319, Math.ceil((cz + rad + HALF) / 2));

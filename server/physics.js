@@ -217,7 +217,7 @@ export class Phys {
       p.lastSpeed = sp;
     }
     this.world.step();
-    if (this.terrainDirty) this.rebuildTerrain();
+    if (this.terrainDirty && Date.now() - (this.lastTerrainBuild || 0) > 1500) { this.lastTerrainBuild = Date.now(); this.rebuildTerrain(); }
   }
 
   /** Radial impulse on all dynamic props. */

@@ -941,15 +941,26 @@ export class Game {
   }
 
   snapshot(now, players) {
-    const ps = players.map((s) => [s.id, round(s.x), round(s.y), round(s.z), round2(s.yaw), round2(s.pitch), s.an, s.held || '', s.em, s.dead ? 1 : 0, s.zone === 'under' ? 1 : 0]);
-    const ns = [...this.npcs.list.values()].map((n) => this.npcs.snapshot(n));
+    const AOI = 230; // metres: players further away (or in another zone) are not sent
+    const arr = new Map();
+    for (const s of players) arr.set(s.id, [s.id, round(s.x), round(s.y), round(s.z), round2(s.yaw), round2(s.pitch), s.an, s.held || '', s.em, s.dead ? 1 : 0, s.zone === 'under' ? 1 : 0]);
+    const ns = JSON.stringify([...this.npcs.list.values()].map((n) => this.npcs.snapshot(n)));
     const pr = [];
     for (const p of this.phys.props.values()) {
       if (p.held || !p.body.isSleeping()) { p.sleepSent = false; pr.push([p.id, ...this.phys.propPose(p)]); }
       else if (!p.sleepSent) { p.sleepSent = true; pr.push([p.id, ...this.phys.propPose(p)]); }
     }
-    const msg = JSON.stringify({ t: 'snap', ts: now, p: ps, n: ns, pr });
-    for (const s of players) this.send(s, msg);
+    const tail = `,"n":${ns},"pr":${JSON.stringify(pr)}}`;
+    const tailUnder = `,"n":[],"pr":${JSON.stringify(pr)}}`;
+    for (const s of players) {
+      const mine = [];
+      for (const o of players) {
+        if (o.zone !== s.zone) continue;
+        if (o !== s && Math.hypot(o.x - s.x, o.z - s.z) > AOI) continue;
+        mine.push(arr.get(o.id));
+      }
+      this.send(s, `{"t":"snap","ts":${now},"p":${JSON.stringify(mine)}${s.zone === 'under' ? tailUnder : tail}`);
+    }
   }
 
   flushWear() {

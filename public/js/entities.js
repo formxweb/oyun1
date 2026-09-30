@@ -79,7 +79,7 @@ export class Entities {
       const e = this.players.get(p[0]);
       if (!e) continue;
       pushSample(e, ts, [p[1], p[2], p[3], p[4], p[5], p[6], p[8], p[9], p[10]]);
-      e.held = p[7] || null;
+      e.held = p[7] || null; e.seen = ts;
     }
     for (const n of m.n) {
       const e = this.ensureNpc(n[0]); if (!e) continue;
@@ -102,7 +102,7 @@ export class Entities {
       e.speed += ((d / Math.max(dt, 0.001)) - e.speed) * Math.min(1, dt * 8);
       e.h.root.rotation.y = a[3];
       e.under = a[8] === 1;
-      e.g.visible = (e.under ? 'under' : 'surface') === localZone && Math.hypot(a[0] - cp.x, a[2] - cp.z) < 180;
+      e.g.visible = (e.under ? 'under' : 'surface') === localZone && Math.hypot(a[0] - cp.x, a[2] - cp.z) < 180 && (e.seen == null || rt - e.seen < 2500);
       if (!e.g.visible) continue;
       if (e.emoteT > 0) e.emoteT -= dt; else e.emote = -1;
       const an = a[5];
