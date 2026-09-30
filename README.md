@@ -112,6 +112,12 @@ tools/     selftest · bots · headless screenshot/scenario harnesses (Playwrigh
 * Saves: `data/world.json` (atomic write + rolling backup) and an append-only `data/chronicle.ndjson`.
 * Hardening: payload cap, per-connection token bucket, per-IP connection cap, all player text sanitised and passed through a moderation hook (`server/text.js`) and only ever rendered via `textContent`/canvas.
 
+## Hosting it
+
+One Node process serves the game, the viewer console and the WebSocket (`/ws`). Run it anywhere with Node ≥ 20 and keep `DATA_DIR` on persistent disk —
+that folder *is* the world. Behind a reverse proxy, forward WebSocket upgrades (`proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";`)
+and the client will use `wss://` automatically on HTTPS. `Ctrl-C`/`SIGTERM` saves the world before exiting; back up `data/world.json` + `data/chronicle.ndjson` to preserve history.
+
 ## Honest status & limits
 
 * This is a first version: one process, designed for **tens to a couple hundred concurrent players**. "Thousands" needs region sharding + interest management (the world state is already patch-based and zone-aware, so this is the next step).

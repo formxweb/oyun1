@@ -143,7 +143,7 @@ async function buildWorld(w, quality, prog) {
   G.ui = new UI({
     inGame: () => G.ready, world: () => G.world, me: () => ({ x: G.local.pos.x, z: G.local.pos.z, yaw: G.local.yaw, zone: G.local.zone }),
     nearbyPlayers: (r) => [...G.entities.players.values()].filter((e) => Math.hypot(e.g.position.x - G.local.pos.x, e.g.position.z - G.local.pos.z) < r).map((e) => ({ x: e.g.position.x, z: e.g.position.z, under: e.under })),
-    sendChat: (t) => G.net.send({ t: 'act', a: 'chat', text: t }), panelClosed: () => relock(),
+    sendChat: (t) => G.net.send({ t: 'act', a: 'chat', text: t }), panelClosed: () => relock(), windup: () => (G.local.charging ? clamp(G.local.chargeT / 0.9, 0, 1) : 0),
   });
   G.ui.setChronicle(w.chronicle.recent, w.chronicle.top);
   G.ui.buildMapBase(G.terrain);
@@ -454,7 +454,9 @@ function frame(now) {
   const blackout = W.lights?.blackoutUntil > serverNow;
   let fogLocal = 0;
   for (const id in W.fog || {}) { const f = W.fog[id]; if (f.until > serverNow) fogLocal = Math.max(fogLocal, clamp(1 - Math.hypot(f.x - L.pos.x, f.z - L.pos.z) / f.r, 0, 1)); }
-  const es = G.env.update(dt, G.camera, { tod, weather: W.weather, sky: W.sky, serverNow, inside: !!L.inside, under, fogLocal });
+  const underwater = !under && lakeDepth(G.camera.position) > 0.2 && G.camera.position.y < (W.lake?.level || 0) + 0.02;
+  const es = G.env.update(dt, G.camera, { tod, weather: W.weather, sky: W.sky, serverNow, inside: !!L.inside, under, fogLocal, underwater });
+  G.underwater = underwater;
   G.tv.update(dt, G.camera, time, G.env.wind, G.env, under);
   G.water.update(dt, time, G.env, W.lake);
   G.buildings.update(dt, time, G.env, blackout, L.inside, L.pos);
@@ -484,6 +486,7 @@ function frame(now) {
     G.ui.crosshairHot(!!it || !!canGrab);
   }
   // HUD
+  if (L.charging) updateVitals();
   hudT -= dt; if (hudT <= 0) {
     hudT = 0.25;
     G.ui.updateTop({ serverNow, tod, era: W.era, weather: W.weather.type, online: G.entities.players.size + 1, age: fmtDuration(serverNow - W.genesis), rtt: G.net.rtt, zoneLabel: under ? (W.portals.hatch1.name || 'The Understory') : districtAt(L.pos.x, L.pos.z, W.places) });
@@ -496,7 +499,7 @@ function frame(now) {
   G.post.dark = Math.max(G.post.dark - (G.post.dark > 0 && !L.dead ? dt * 0.05 : 0), L.dead ? 0.45 : 0);
   G.post.fade = Math.max(0, G.post.fade - dt * 0.8);
   const sat = under ? 0.85 : 1.05 - G.env.cloudDark * 0.2 + (W.sky?.redUntil > serverNow ? 0.15 : 0);
-  const tint = W.sky?.redUntil > serverNow ? [1.1, 0.9, 0.85] : under ? [0.92, 1.02, 1.05] : [1, 1, 1];
+  const tint = G.underwater ? [0.7, 1.0, 1.05] : W.sky?.redUntil > serverNow ? [1.1, 0.9, 0.85] : under ? [0.92, 1.02, 1.05] : [1, 1, 1];
   G.renderer.toneMappingExposure = 0.9 + nightK * 0.5 * (1 - G.env.eclipse) + G.env.twilight * 0.35;
   G.post.render(dt, time, { night: nightK, sat, tint, vignette: 0.4 + G.env.dim * 0.2 + (under ? 0.15 : 0), bloom: (0.38 + nightK * 0.25 + G.env.eclipse * 0.3) * G.bloomBoost });
 }

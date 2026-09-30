@@ -93,7 +93,7 @@ export class UI {
     $('hpbar').style.width = Math.max(0, hp) + '%'; $('hptxt').textContent = Math.round(hp);
     const names = [['HANDS', ''], ['CHARGE', inv.charges], ['PLANK', inv.planks], ['SIGN', inv.signs]];
     this.toolsEl.innerHTML = names.map((n, i) => `<div class="tool ${i === tool ? 'on' : ''} ${n[1] === 0 ? 'empty' : ''}"><b>${i + 1}${n[1] !== '' ? ' · ' + n[1] : ''}</b>${n[0]}</div>`).join('');
-    $('hold').textContent = held ? `holding: ${held}` : '';
+    $('hold').textContent = held ? `holding: ${held}${this.h.windup && this.h.windup() > 0 ? ' · wind-up ' + '▮'.repeat(Math.ceil(this.h.windup() * 6)) : ''}` : '';
   }
   streamPanel(s) {
     const el = $('stream');

@@ -390,6 +390,7 @@ export class Env {
     let dens = 0.0011 + this.fogBoost + this.nightAmt * 0.0005;
     if (st.fogLocal) dens += st.fogLocal * 0.011;
     if (under) { fc.set(0x0a1114); dens = 0.0085; }
+    if (st.underwater) { fc.set(0x0c4a58).multiplyScalar(0.35 + 0.65 * this.dayAmt); dens = 0.075; }
     this.scene.fog.color.copy(fc); this.scene.fog.density = dens;
     this.scene.background = under ? this.scene.fog.color : null;
     this.sky.visible = !under;
