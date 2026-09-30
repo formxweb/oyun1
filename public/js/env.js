@@ -114,9 +114,9 @@ void main(){
   if (uConstAmt > 0.01) {
     float az = atan(d.x, d.z);
     float el = asin(clamp(d.y,-1.,1.));
-    vec2 cuv = vec2((az - 1.15) / 1.9 + 0.5, (el - 0.32) / 0.34);
+    vec2 cuv = vec2((az - 1.15) / 1.3 + 0.5, (el - 0.38) / 0.325);
     if (cuv.x > 0.0 && cuv.x < 1.0 && cuv.y > 0.0 && cuv.y < 1.0) {
-      float t = texture2D(uConst, vec2(cuv.x, 1.0-cuv.y)).r;
+      float t = texture2D(uConst, vec2(1.0 - cuv.x, 1.0-cuv.y)).r;
       col += vec3(1.0,0.95,0.8) * t * uConstAmt * (0.7+0.3*sin(uTime*2.+cuv.x*40.));
     }
   }
@@ -257,9 +257,9 @@ export class Env {
     const src = ctx.getImageData(0, 0, 1024, 256);
     const out = ctx.createImageData(1024, 256);
     const dots = [];
-    for (let y = 2; y < 254; y += 5) for (let x = 2; x < 1022; x += 5) if (src.data[(y * 1024 + x) * 4] > 128 && Math.random() < 0.55) dots.push([x + (Math.random() - 0.5) * 3, y + (Math.random() - 0.5) * 3, 1 + Math.random() * 2]);
+    for (let y = 2; y < 254; y += 3) for (let x = 2; x < 1022; x += 3) if (src.data[(y * 1024 + x) * 4] > 128 && Math.random() < 0.6) dots.push([x + (Math.random() - 0.5) * 2, y + (Math.random() - 0.5) * 2, 0.6 + Math.random() * 1.0]);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1024, 256);
-    for (const [x, y, r] of dots) { const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.5); g.addColorStop(0, '#fff'); g.addColorStop(1, '#000'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.5, 0, 7); ctx.fill(); }
+    for (const [x, y, r] of dots) { const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.4); g.addColorStop(0, '#fff'); g.addColorStop(1, '#000'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.4, 0, 7); ctx.fill(); }
     const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.NoColorSpace; t.needsUpdate = true;
     this.skyMat.uniforms.uConst.value = t;
   }

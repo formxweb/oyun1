@@ -120,6 +120,7 @@ export class Npcs {
     if (work && isWorkTime && def.workAt) return { kind: 'work', bid: work.id, at: def.workAt };
     if (def.arch === 'piet' && tod >= 6 && tod < 18) return { kind: 'fish', x: def.spot.x, z: def.spot.z };
     if (def.arch === 'reyes' && !work) return { kind: 'wander' };
+    if (def.stay) return { kind: 'wander' };
     if (tod >= 18 && tod < 22 || (tod >= 12 && tod < 13)) return this.socialSpot(n);
     return { kind: 'wander' };
   }
@@ -233,9 +234,14 @@ export class Npcs {
       const b = n.homeId && this.usable(n.homeId);
       const cx = b ? b.x : 0, cz = b ? b.z + (BTYPES[b.type].d / 2 + 6) * Math.cos(b.yaw) * 1 : 56;
       const ang = Math.random() * 6.28, r = 6 + Math.random() * 22;
+      if (n.def.stay && b) { const tt = { x: b.x + Math.cos(ang) * (4 + Math.random() * 9), z: b.z + Math.sin(ang) * (4 + Math.random() * 9) }; return this.game.terrain.height(tt.x, tt.z) > 1 ? tt : { x: b.x, z: b.z + 6 }; }
       let tx = clamp(cx + Math.cos(ang) * r * 1.6, -100, 118), tz = clamp(cz + Math.sin(ang) * r * 0.6, 20, 80);
-      if (n.def.arch === 'reyes') { tx = -60 + Math.random() * 130; tz = 50 + Math.random() * 10; }
-      if (n.def.arch === 'wren') { tx = -100 + Math.random() * 210; tz = 20 + Math.random() * 45; }
+      for (let tries = 0; tries < 14; tries++) {
+        if (n.def.arch === 'reyes') { tx = -60 + Math.random() * 130; tz = 50 + Math.random() * 10; }
+        else if (n.def.arch === 'wren') { tx = -100 + Math.random() * 210; tz = 20 + Math.random() * 45; }
+        else if (tries) { tx = clamp(cx + Math.cos(ang + tries) * r * 1.6, -100, 118); tz = clamp(cz + Math.sin(ang + tries) * r * 0.6, 20, 80); }
+        if (!this.buildingAt(tx, tz) && this.passableAt(tx, tz, this.game.terrain.height(tx, tz) + 0.1) && !this.nearBuilding(tx, tz, 1.2)) break;
+      }
       return { x: tx, z: tz };
     }
     return { x: a.x, z: a.z };
@@ -249,7 +255,14 @@ export class Npcs {
     if (here && (!dest || here.id !== dest.id)) { path.push(this.door(here, false)); path.push(this.door(here, true)); }
     if (dest && (!here || here.id !== dest.id)) { path.push(this.door(dest, true)); path.push(this.door(dest, false)); }
     path.push({ x: t.x, z: t.z });
-    return path;
+    // where the straight walk is blocked (counters, water, other buildings) route around it
+    const out = []; let cx = n.x, cz = n.z;
+    for (const wp of path) {
+      if (this.segmentClear(cx, cz, wp.x, wp.z, n.y)) out.push(wp);
+      else { const sub = this.astar(cx, cz, wp.x, wp.z, n.y); if (sub) out.push(...sub); else out.push(wp); }
+      cx = wp.x; cz = wp.z;
+    }
+    return out;
   }
 
   moveToward(n, tx, tz, speed, dt) {
@@ -263,7 +276,7 @@ export class Npcs {
       const px = n.x + Math.sin(a) * 0.9, pz = n.z + Math.cos(a) * 0.9;
       if (this.passable(n, px, pz)) { chosen = a; break; }
     }
-    if (chosen == null) { n.stuck += dt; if (n.stuck > 2.5) { n.stuck = 0; n.path = []; n.target = null; n.nextThink = 0; } return false; }
+    if (chosen == null) { n.stuck += dt; if (n.stuck > 2.5) { n.stuck = 0; n.path = []; n.target = null; n.nextThink = 0; n.replans = (n.replans || 0) + 1; if (n.replans >= 4) this.rescue(n); } return false; }
     n.stuck = Math.max(0, n.stuck - dt);
     const dy = angleDiff(n.yaw, chosen);
     n.yaw += clamp(dy, -6 * dt, 6 * dt);
@@ -285,6 +298,84 @@ export class Npcs {
     if (moved && Math.hypot(p.x - x, p.z - z) > 0.22) return false;
     return true;
   }
+
+  // ---------- pathfinding (grid A*, used when a straight walk is blocked) ----------
+  /** Ground height if a walker standing at height cy can step to (x,z); null if not. */
+  stepTo(x, z, cy) {
+    const gy = groundAt(this.game.col, this.game.terrain, x, z, cy, 'surface');
+    if (gy < WATER_LEVEL - 0.55 || gy < VOID_DEPTH * 0.4 || gy - cy > 0.55) return null;
+    const p = { x, z };
+    const moved = resolveXZ(this.game.col, p, 0.36, gy, gy + PLAYER_H, 'surface');
+    return moved && Math.hypot(p.x - x, p.z - z) > 0.22 ? null : gy;
+  }
+
+  passableAt(x, z, y) { return this.stepTo(x, z, y) != null; }
+
+  segmentClear(ax, az, bx, bz, y) {
+    const d = Math.hypot(bx - ax, bz - az), steps = Math.max(1, Math.ceil(d / 0.5));
+    let cy = y;
+    for (let i = 1; i <= steps; i++) { const t = i / steps; const gy = this.stepTo(ax + (bx - ax) * t, az + (bz - az) * t, cy); if (gy == null) return false; cy = gy; }
+    return true;
+  }
+
+  astar(sx, sz, tx, tz, y) {
+    const cs = 0.7, m = 9;
+    const x0 = Math.min(sx, tx) - m, z0 = Math.min(sz, tz) - m;
+    const W = Math.ceil((Math.max(sx, tx) + m - x0) / cs), H = Math.ceil((Math.max(sz, tz) + m - z0) / cs);
+    if (W * H > 40000) return null;
+    const idx = (i, j) => j * W + i;
+    const cell = (x, z) => [clamp(Math.floor((x - x0) / cs), 0, W - 1), clamp(Math.floor((z - z0) / cs), 0, H - 1)];
+    const wx = (i) => x0 + (i + 0.5) * cs, wz = (j) => z0 + (j + 0.5) * cs;
+    const [si, sj] = cell(sx, sz), [ti, tj] = cell(tx, tz);
+    const g = new Map([[idx(si, sj), 0]]), came = new Map(), ys = new Map([[idx(si, sj), y]]);
+    const heap = [[Math.hypot(ti - si, tj - sj), idx(si, sj)]];
+    const push = (e) => { heap.push(e); let i = heap.length - 1; while (i > 0) { const p2 = (i - 1) >> 1; if (heap[p2][0] <= heap[i][0]) break; [heap[p2], heap[i]] = [heap[i], heap[p2]]; i = p2; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let s2 = i; if (l < heap.length && heap[l][0] < heap[s2][0]) s2 = l; if (r < heap.length && heap[r][0] < heap[s2][0]) s2 = r; if (s2 === i) break; [heap[s2], heap[i]] = [heap[i], heap[s2]]; i = s2; } } return top; };
+    const goal = idx(ti, tj);
+    const dead = new Set();
+    let expanded = 0, found = false;
+    while (heap.length && expanded++ < 7000) {
+      const [, cur] = pop();
+      if (cur === goal) { found = true; break; }
+      const ci = cur % W, cj = (cur / W) | 0, cg = g.get(cur), cy = ys.get(cur);
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+        if (!di && !dj) continue;
+        const ni = ci + di, nj = cj + dj;
+        if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
+        const k = idx(ni, nj);
+        if (dead.has(k)) continue;
+        const ng = cg + (di && dj ? 1.414 : 1);
+        if (ng >= (g.get(k) ?? 1e9)) continue;
+        const gy = this.stepTo(wx(ni), wz(nj), cy);
+        if (gy == null) { if (!g.has(k)) dead.add(k); continue; }
+        if (di && dj && (this.stepTo(wx(ci + di), wz(cj), cy) == null || this.stepTo(wx(ci), wz(cj + dj), cy) == null)) continue; // no corner cutting
+        g.set(k, ng); came.set(k, cur); ys.set(k, gy); push([ng + Math.hypot(ti - ni, tj - nj), k]);
+      }
+    }
+    if (!found) return null;
+    const cells = []; for (let k = goal; k !== undefined; k = came.get(k)) cells.push([wx(k % W), wz((k / W) | 0), ys.get(k)]);
+    cells.reverse();
+    // string-pull: keep only the corners we actually need
+    const out = []; let a = 0;
+    while (a < cells.length - 1) {
+      let b = cells.length - 1;
+      while (b > a + 1 && !this.segmentClear(cells[a][0], cells[a][1], cells[b][0], cells[b][1], cells[a][2])) b--;
+      out.push({ x: cells[b][0], z: cells[b][1] }); a = b;
+    }
+    return out;
+  }
+
+  /** Persistently stuck (geometry the pathfinder cannot solve): put them on the street outside. */
+  rescue(n) {
+    n.replans = 0;
+    const here = this.buildingAt(n.x, n.z);
+    if (here) { const d = this.door(here, true); n.x = d.x; n.z = d.z; }
+    else { for (let r = 1; r < 12; r += 1.5) for (let a = 0; a < 6.28; a += 0.6) { const x = n.x + Math.cos(a) * r, z = n.z + Math.sin(a) * r; if (this.passableAt(x, z, this.game.terrain.height(x, z) + 0.1)) { n.x = x; n.z = z; n.y = this.groundY(n); return; } } }
+    n.y = this.groundY(n);
+    n.path = []; n.target = null; n.nextThink = 0;
+  }
+
+  nearBuilding(x, z, m) { for (const id in this.b) { const b = this.b[id]; if (b.zone === 'surface' && !b.ruined && BTYPES[b.type].furn && insideFootprint(b, x, z, m)) return true; } return false; }
 
   faceToward(n, x, z, dt) {
     const want = Math.atan2(x - n.x, z - n.z);

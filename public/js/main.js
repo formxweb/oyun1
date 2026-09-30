@@ -20,6 +20,8 @@ import { UI } from './ui.js';
 import { Understory, ArchiveScreen } from './under.js';
 
 const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const randToken = () => { const a = new Uint8Array(32); (crypto.getRandomValues ? crypto.getRandomValues(a) : a.forEach((_, i) => (a[i] = Math.floor(Math.random() * 256)))); return [...a].map((b) => b.toString(16).padStart(2, '0')).join(''); };
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* */ } } };
 
@@ -51,7 +53,7 @@ async function startGame(name) {
   $('terr').textContent = '';
   const quality = $('pquality').value; G.quality = quality;
   store.set('tls_name', name); store.set('tls_q', quality);
-  let token = store.get('tls_token', ''); if (!token) { token = crypto.randomUUID() + crypto.randomUUID(); store.set('tls_token', token); }
+  let token = store.get('tls_token', ''); if (!token) { token = randToken(); store.set('tls_token', token); }
   $('title').hidden = true; $('loading').hidden = false;
   const prog = (p, msg) => { $('loadbar').style.width = p * 100 + '%'; $('loadsub').textContent = msg; };
   try {
@@ -212,7 +214,9 @@ function showStartPanel(entries, sinceMs, first, world) {
   const digest = entries.length ? entries.slice(-6).map((e) => G.ui.entryHTML(e)).join('') : '';
   el.innerHTML = `<h2 style="padding:16px 20px 0;color:var(--acc);font-family:var(--mono);letter-spacing:.25em;font-size:14px">${away ? `WHILE YOU WERE AWAY · ${away}` : 'YOU ARE CONNECTED'}</h2>
   <div style="padding:6px 20px 8px;color:#cfc9b8;font-size:14px;line-height:1.55">${away ? '' : `This world has been running for <b>${age}</b>. Nobody is scripting it. Everything you touch will still be here when you leave — and everything anyone else did already is.`}</div>
-  <div style="padding:0 20px 10px;overflow:auto;max-height:44vh">${digest}</div><div class="center" style="padding:12px"><button class="btn big" id="dg-ok">CLICK TO ENTER</button></div>`;
+  <div style="padding:0 20px 10px;overflow:auto;max-height:44vh">${digest}</div>
+  <div class="small dim" style="padding:0 20px 8px;line-height:1.8">There is no objective. <b>WASD</b> move · <b>E</b> talk · <b>1–4</b> tools (<b>2</b> charge, <b>3</b> plank, <b>4</b> sign) · <b>LMB</b> grab/throw · <b>Tab</b> Chronicle · <b>M</b> map · <b>F</b> clip · <b>Esc</b> pause</div>
+  <div class="center" style="padding:12px"><button class="btn big" id="dg-ok">CLICK TO ENTER</button></div>`;
   el.hidden = false;
   $('dg-ok').onclick = () => { el.hidden = true; G.starting = false; lock(); };
 }
@@ -234,7 +238,7 @@ function bindNet() {
   net.on('pleave', (m) => { const e = G.entities.players.get(m.id); if (e) ui.chatLine('', `${e.info.name} left`, true); G.entities.removePlayer(m.id); });
   net.on('plive', (m) => G.entities.setLive(m.id, m.live));
   net.on('chat', (m) => { if (m.id === G.myId) { ui.chatLine(m.name, m.text); return; } G.entities.chat(m.id, m.text); ui.chatLine(m.name + (m.live ? ' ●' : ''), m.text); });
-  net.on('chron', (m) => { ui.addEntry(m.e); const cls = m.e.legend >= 60 ? 'legend' : m.e.kind === 'death' ? 'death' : ''; ui.feed(m.e, cls); G.archive.setEntries(archiveList()); });
+  net.on('chron', (m) => { if (G.streaming && m.e.legend >= 40 && (m.e.tags || []).includes('stream:' + G.name)) ui.toast(`● CLIP THIS — ${m.e.clock} UTC · ${m.e.title}`, 'stream'); ui.addEntry(m.e); const cls = m.e.legend >= 60 ? 'legend' : m.e.kind === 'death' ? 'death' : ''; ui.feed(m.e, cls); G.archive.setEntries(archiveList()); });
   net.on('legend', (m) => { ui.legend(m.title, m.text); G.audio.legend(); });
   net.on('era', (m) => { ui.toast(`A NEW AGE: ${m.era.name}`, 'good'); });
   net.on('toast', (m) => ui.toast(m.text, m.kind));
@@ -372,13 +376,13 @@ function setZone(zone, force) {
 function findInteract() {
   const L = G.local, p = L.pos;
   const npc = G.entities.nearestNpc(p, 3.6);
-  if (npc) return { kind: 'npc', npc, label: `Talk to ${npc.info.name}` + (L.heldId ? ' · <b>G</b> give' : '') };
+  if (npc) return { kind: 'npc', npc, label: `Talk to ${esc(npc.info.name)}` + (L.heldId ? ' · <b>G</b> give' : '') };
   const W = G.world;
   for (const id in W.portals) {
     const po = W.portals[id];
     if (po.zone !== L.zone) continue;
     const d = Math.hypot(po.x - p.x, po.z - p.z);
-    if (po.kind === 'hatch') { if (d < (po.found ? 2.4 : 1.7) && Math.abs((po.y ?? p.y) - p.y) < 2) return { kind: 'portal', id, label: po.found ? `Descend to ${po.name || 'the Understory'}` : 'Examine the rug' }; }
+    if (po.kind === 'hatch') { if (d < (po.found ? 2.4 : 1.7) && Math.abs((po.y ?? p.y) - p.y) < 2) return { kind: 'portal', id, label: po.found ? `Descend to ${esc(po.name || 'the Understory')}` : 'Examine the rug' }; }
     else if (po.kind === 'sinkhole') { if (d < 3.4 && Math.abs(G.terrain.height(po.x, po.z) - p.y) < 6) return { kind: 'portal', id, label: 'Climb down the sinkhole' }; }
     else if (po.kind === 'ladder') { if (d < 2.6) return { kind: 'portal', id, label: 'Climb up to the surface' }; }
   }

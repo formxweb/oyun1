@@ -2,7 +2,7 @@
 // `pub` is mirrored to every client through path patches; `priv` never leaves the server.
 import fs from 'node:fs';
 import path from 'node:path';
-import { SEED, INITIAL_BUILDINGS, BTYPES, ROADS } from '../shared/layout.js';
+import { SEED, INITIAL_BUILDINGS, BTYPES } from '../shared/layout.js';
 import { initialFloorY } from '../shared/terrain.js';
 
 export const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.resolve('data');

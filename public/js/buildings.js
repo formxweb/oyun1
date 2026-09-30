@@ -279,16 +279,6 @@ export class BuildingsView {
       const half = D / 2 + ov;
       const a = Math.atan2(rise, half), span = Math.hypot(half, rise);
       const ry = ridgeZ ? Math.PI / 2 : 0;
-      const placePanel = (sign) => {
-        const g = boxGeo(W + ov * 2, th, span, 0.6);
-        const c = Math.cos(ry), s = Math.sin(ry);
-        const lx = 0, lz = sign * half / 2;
-        // rotate panel by tilt about local X, then yaw the whole roof
-        _e.set(sign * a, 0, 0); _q.setFromEuler(_e); _p.set(0, 0, 0); _m.compose(_p, _q, _s); g.applyMatrix4(_m);
-        R.add(rm, g, lz * s, h + rise / 2 + th / 2, lz * c, 0, ry, 0);
-        // yaw rotation of geometry orientation
-      };
-      // panels need their own yaw baked in; do it explicitly
       for (const sign of [-1, 1]) {
         const g = boxGeo(W + ov * 2, th, span, 0.6);
         _e.set(sign * a, 0, 0); _q.setFromEuler(_e); _m.compose(new THREE.Vector3(0, 0, sign * half / 2), _q, _s); g.applyMatrix4(_m);

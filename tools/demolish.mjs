@@ -1,0 +1,37 @@
+// Browser watches a bot demolish a building: verifies charge visuals, explosion, collapse, ruin, patches and camera shake.
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import { chromium } from 'playwright-core';
+import { Bot, sleep } from './bot.js';
+const PORT = 9000 + Math.floor(Math.random() * 90);
+fs.rmSync('.scratch/dm-data', { recursive: true, force: true });
+const proc = spawn('node', ['server/index.js'], { env: { ...process.env, DEV: '1', PORT, DATA_DIR: '.scratch/dm-data' }, stdio: ['ignore', 'pipe', 'pipe'] });
+proc.stderr.on('data', (d) => console.log('[server err]', d.toString().trim()));
+await new Promise((res) => proc.stdout.on('data', (d) => { if (d.toString().includes('is up')) res(); }));
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
+const page = await (await browser.newContext({ viewport: { width: 1100, height: 620 } })).newPage();
+const logs = []; page.on('console', (m) => { if (m.type() === 'error') logs.push(m.text()); }); page.on('pageerror', (e) => logs.push('pageerror ' + e.message));
+await page.goto(`http://localhost:${PORT}/?name=Watcher`);
+await page.selectOption('#pquality', 'medium');
+await page.waitForFunction(() => !document.getElementById('enter').disabled);
+await page.click('#enter');
+await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
+await page.waitForSelector('#dg-ok', { state: 'attached', timeout: 60000 });
+await page.evaluate(() => { const G = __game; document.getElementById('dg-ok').click(); G.starting = false; G.local.locked = true; G.forceTod = 15.5; const L = G.local; L.teleport(96, G.terrain.height(96, 66), 66, 'surface', 3.14); L.yaw = 3.14 + 0.85; L.pitch = 0.08; L.updateCamera(0.02, G.env); L.sendAcc = 1; L.updateNet(0, false); });
+const bot = new Bot(`ws://localhost:${PORT}/ws`, 'Demolisher'); await bot.connect();
+const target = bot.world.buildings.b_okafor;
+await bot.walkTo(target.x + 3, target.z + 12, 9, 40000);
+await page.waitForTimeout(1500);
+for (let i = 0; i < 3; i++) { bot.act('charge', bot.aimAt(target.x, target.floorY + 1, target.z + 2)); await sleep(150); }
+await page.waitForTimeout(2500);
+await page.screenshot({ path: '.scratch/shots/dm_fuse.png' });
+await page.waitForTimeout(3000);
+await page.screenshot({ path: '.scratch/shots/dm_boom.png' });
+await page.waitForTimeout(6000);
+await page.evaluate((t) => { const L = __game.local; L.teleport(t.x + 2, __game.terrain.height(t.x + 2, t.z + 16), t.z + 16, 'surface', 3.14); L.yaw = 3.14; L.pitch = 0.12; L.updateCamera(0.02, __game.env); }, target);
+await page.waitForTimeout(3500);
+await page.screenshot({ path: '.scratch/shots/dm_ruin.png' });
+const st = await page.evaluate(() => ({ ruined: __game.world.buildings.b_okafor.ruined, craters: Object.keys(__game.world.craters).length, felled: Object.keys(__game.world.felled).length, graves: Object.keys(__game.world.graves).length, under: Object.keys(__game.world.buildings).filter((k) => k.startsWith('u_b_')), props: __game.objects.props.size, feed: document.getElementById('feed').children.length, npcs: __game.entities.npcs.size }));
+console.log(JSON.stringify(st));
+console.log(logs.length ? [...new Set(logs)].join('\n') : 'no console errors');
+bot.close(); await browser.close(); proc.kill(); process.exit(0);

@@ -23,7 +23,7 @@ export const ROSTER = [
     look: { skin: '#a8734f', hair: '#1d1512', style: 'short', shirt: '#4a5a3a', pants: '#2a3020', hat: 'sheriff', glasses: false, scale: 1.06, build: 1.1 },
   },
   {
-    id: 'n_anselm', name: 'Father Anselm', role: 'Priest', home: 'b_chapel', work: 'b_chapel', workAt: [-1.7, -4.7], homeAt: [-2.4, -5.2], arch: 'anselm', voice: 0.9,
+    id: 'n_anselm', stay: true, name: 'Father Anselm', role: 'Priest', home: 'b_chapel', work: 'b_chapel', workAt: [-1.7, -4.7], homeAt: [-2.4, -5.2], arch: 'anselm', voice: 0.9,
     look: { skin: '#d8b596', hair: '#8a8a8a', style: 'bald', shirt: '#151515', pants: '#151515', hat: 'none', glasses: true, scale: 1.0, build: 0.9 },
   },
   {
