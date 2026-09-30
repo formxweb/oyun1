@@ -22,6 +22,8 @@ npm start                # → http://localhost:8080
 
 Open the page, pick a name, click **ENTER HOLLOWMERE**. Open a second tab (or a friend) to share the world.
 
+**Windows, no terminal:** extract the ZIP, then double-click `BASLAT.bat` (or `BASLAT-HIZLI.bat` for the fast demo pace). It installs on first run, starts the server and opens the browser. Needs Node.js 20+.
+
 | command | what it does |
 |---|---|
 | `npm start` | run the server (world is saved to `./data`, so it survives restarts) |
